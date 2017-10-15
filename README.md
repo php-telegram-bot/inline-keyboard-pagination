@@ -48,7 +48,14 @@ $callback_data_format = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}
 // Define inline keyboard pagination.
 $ikp = new InlineKeyboardPagination($items, $command);
 $ikp->setMaxButtons(7, true); // Second parameter set to always show 7 buttons if possible.
+$ikp->setRangeOffset(1); //optional: if you change offsets of selected page, you can use this method. e.g if selected page is 6 and Range offset set as 1, you will have 5 & 7 in pagination
 $ikp->setLabels($labels);
+
+/*
+ *optional: But recommended. if you want that max_page will set according to labels you defined,
+ * please call this method. if you remove $label elements and then call this method, max_page will be defined according to labels
+ */
+$ikp->setMaxPageBasedOnLabels();
 $ikp->setCallbackDataFormat($callback_data_format);
 
 // Get pagination.
