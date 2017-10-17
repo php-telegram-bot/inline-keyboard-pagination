@@ -7,334 +7,469 @@ use TelegramBot\InlineKeyboardPagination\InlineKeyboardPagination;
 /**
  * Class InlineKeyboardPaginationTest
  */
-final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
+
+/**
+ * Class InlineKeyboardPagination
+ * Based on https://github.com/php-telegram-bot/inline-keyboard-pagination
+ *
+ * @package MehrdadKhoddami\TelegramBot\InlineKeyboardPagination
+ */
+class InlineKeyboardPagination implements InlineKeyboardPaginator
 {
     /**
-     * @var int
+     * @var integer
      */
-    private $items_per_page = 5;
+    protected $items_per_page;
 
     /**
-     * @var int
+     * @var integer
      */
-    private $selected_page;
+    protected $max_buttons = 5;
 
     /**
-     * @var string
+     * @var bool
      */
-    private $command;
+    protected $force_button_count = false;
+
+    /**
+     * @var integer
+     */
+    protected $selected_page;
 
     /**
      * @var array
      */
-    private $items;
+    protected $items;
 
     /**
-     * InlineKeyboardPaginationTest constructor.
+     * @var integer
      */
-    public function __construct()
+    protected $range_offset = 1;
+
+    /**
+     * @var string
+     */
+    protected $command;
+
+    /**
+     * @var string
+     */
+    protected $callback_data_format = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}';
+
+    /**
+     * @var array
+     */
+    protected $labels = [
+        'default'  => '%d',
+        'first'    => '« %d',
+        'previous' => '‹ %d',
+        'current'  => '· %d ·',
+        'next'     => '%d ›',
+        'last'     => '%d »',
+    ];
+
+    /**
+     * @inheritdoc
+     * @throws InlineKeyboardPaginationException
+     */
+    public function setMaxButtons(int $max_buttons = 5, bool $force_button_count = false): InlineKeyboardPagination
     {
-        parent::__construct();
+        if ($max_buttons < 2 || $max_buttons > 8) {
+            throw new InlineKeyboardPaginationException('Invalid max buttons, must be between 2 and 8.');
+        }
+        $this->max_buttons = $max_buttons;
+        $this->force_button_count = $force_button_count;
 
-        $this->items         = range(1, 100);
-        $this->command       = 'testCommand';
-        $this->selected_page = random_int(1, 15);
-    }
-
-    public function testValidConstructor()
-    {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-
-        $data = $ikp->getPagination();
-
-        $this->assertArrayHasKey('items', $data);
-        $this->assertCount($this->items_per_page, $data['items']);
-        $this->assertArrayHasKey('keyboard', $data);
-        $this->assertArrayHasKey(0, $data['keyboard']);
-        $this->assertArrayHasKey('text', $data['keyboard'][0]);
-        $this->assertStringStartsWith("command={$this->command}", $data['keyboard'][0]['callback_data']);
+        return $this;
     }
 
     /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Invalid selected page, must be between 1 and 20
+     * Set max number of buttons based on labels which user defined & range of selected page
+     *
+     * @return InlineKeyboardPagination
+     * @throws InlineKeyboardPaginationException
      */
-    public function testInvalidConstructor()
+    public function setMaxButtonsBasedOnLabels(): InlineKeyboardPagination
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, 10000, $this->items_per_page);
-        $ikp->getPagination();
-    }
-
-    /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Items list empty.
-     */
-    public function testEmptyItemsConstructor()
-    {
-        $ikp = new InlineKeyboardPagination([]);
-        $ikp->getPagination();
-    }
-
-    public function testCallbackDataFormat()
-    {
-        $ikp = new InlineKeyboardPagination(range(1, 10), 'cmd', 2, 5);
-
-        self::assertAllButtonPropertiesEqual([
-            [
-                'command=cmd&oldPage=2&newPage=1',
-                'command=cmd&oldPage=2&newPage=2',
-            ],
-        ], 'callback_data', [$ikp->getPagination()['keyboard']]);
-
-        $ikp->setCallbackDataFormat('{COMMAND};{OLD_PAGE};{NEW_PAGE}');
-
-        self::assertAllButtonPropertiesEqual([
-            [
-                'cmd;2;1',
-                'cmd;2;2',
-            ],
-        ], 'callback_data', [$ikp->getPagination()['keyboard']]);
-    }
-
-    public function testCallbackDataParser()
-    {
-        $ikp  = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-        $data = $ikp->getPagination();
-
-        $callback_data = $ikp::getParametersFromCallbackData($data['keyboard'][0]['callback_data']);
-
-        self::assertSame([
-            'command' => $this->command,
-            'oldPage' => "$this->selected_page",
-            'newPage' => '1', // because we're getting the button at position 0, which is page 1
-        ], $callback_data);
-    }
-
-    public function testValidPagination()
-    {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-
-        $length = (int) ceil(count($this->items) / $this->items_per_page);
-
-        for ($i = 1; $i < $length; $i++) {
-            $ikp->getPagination($i);
+        $max_buttons = 0;
+        $count = count($this->labels);
+        if ($count < 2) {
+            throw new InlineKeyboardPaginationException('Invalid number of labels was passed to paginator');
         }
 
-        $this->assertTrue(true);
+        if (isset($this->labels['current'])) {
+            $max_buttons++;
+        }
+
+        if (isset($this->labels['first'])) {
+            $max_buttons++;
+        }
+
+        if (isset($this->labels['last'])) {
+            $max_buttons++;
+        }
+
+        if (isset($this->labels['previous'])) {
+            $max_buttons++;
+        }
+
+        if (isset($this->labels['next'])) {
+            $max_buttons++;
+        }
+        $max_buttons += $this->range_offset * 2;
+
+        $this->max_buttons = $max_buttons;
+
+        return $this;
     }
 
     /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Invalid selected page, must be between 1 and 20
+     * Get the current callback format.
+     *
+     * @return string
      */
-    public function testInvalidPagination()
+    public function getCallbackDataFormat(): string
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-        $ikp->getPagination($ikp->getNumberOfPages() + 1);
-    }
-
-    public function testSetMaxButtons()
-    {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-        $ikp->setMaxButtons(6);
-        self::assertTrue(true);
-    }
-
-    public function testForceButtonsCount()
-    {
-        $ikp = new InlineKeyboardPagination(range(1, 10), 'cbdata', 1, 1);
-
-        // testing with 8 flexible buttons
-        $ikp->setMaxButtons(8, false);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        // testing with 8 fixed buttons
-        $ikp->setMaxButtons(8, true);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 2', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        // testing with 7 fixed buttons
-        $ikp->setMaxButtons(7, true);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·'],
-        ], 'text', [$ikp->getPagination(10)['keyboard']]);
+        return $this->callback_data_format;
     }
 
     /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Invalid max buttons, must be between 5 and 8.
+     * Set the callback_data format.
+     *
+     * @param string $callback_data_format
+     *
+     * @return InlineKeyboardPagination
      */
-    public function testInvalidMaxButtons()
+    public function setCallbackDataFormat(string $callback_data_format): InlineKeyboardPagination
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-        $ikp->setMaxButtons(2);
-        $ikp->getPagination();
+        $this->callback_data_format = $callback_data_format;
+
+        return $this;
     }
 
     /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Invalid selected page, must be between 1 and 20
+     * Return list of keyboard button labels.
+     *
+     * @return array
      */
-    public function testInvalidSelectedPage()
+    public function getLabels(): array
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, $this->items_per_page);
-        $ikp->setSelectedPage(-5);
-        $ikp->getPagination();
-    }
-
-    public function testGetItemsPerPage()
-    {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, 4);
-        self::assertEquals(4, $ikp->getItemsPerPage());
+        return $this->labels;
     }
 
     /**
-     * @expectedException \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException
-     * @expectedExceptionMessage Invalid number of items per page, must be at least 1
+     * Set the keyboard button labels.
+     *
+     * @param array $labels
+     *
+     * @return InlineKeyboardPagination
      */
-    public function testInvalidItemsPerPage()
+    public function setLabels($labels): InlineKeyboardPagination
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selected_page, 0);
-        $ikp->getPagination();
+        $this->labels = $labels;
+
+        return $this;
     }
 
-    public function testButtonLabels()
+    /**
+     * @inheritdoc
+     */
+    public function setCommand(string $command = 'pagination'): InlineKeyboardPagination
     {
-        $cbdata  = 'command=%s&oldPage=%d&newPage=%d';
-        $command = 'cbdata';
-        $ikp1    = new InlineKeyboardPagination(range(1, 1), $command, 1, $this->items_per_page);
-        $ikp10   = new InlineKeyboardPagination(range(1, $this->items_per_page * 10), $command, 1, $this->items_per_page);
+        $this->command = $command;
 
-        // current
-        $keyboard = [$ikp1->getPagination(1)['keyboard']];
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·'],
-        ], 'text', $keyboard);
-        self::assertAllButtonPropertiesEqual([
-            [
-                sprintf($cbdata, $command, 1, 1),
-            ],
-        ], 'callback_data', $keyboard);
+        return $this;
+    }
 
-        // first, previous, current, next, last
-        $keyboard = [$ikp10->getPagination(5)['keyboard']];
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »'],
-        ], 'text', $keyboard);
-        self::assertAllButtonPropertiesEqual([
-            [
-                sprintf($cbdata, $command, 5, 1),
-                sprintf($cbdata, $command, 5, 4),
-                sprintf($cbdata, $command, 5, 5),
-                sprintf($cbdata, $command, 5, 6),
-                sprintf($cbdata, $command, 5, 10),
-            ],
-        ], 'callback_data', $keyboard);
+    /**
+     * @inheritdoc
+     * @throws InlineKeyboardPaginationException
+     */
+    public function setSelectedPage(int $selected_page): InlineKeyboardPagination
+    {
+        $number_of_pages = $this->getNumberOfPages();
 
-        // first, previous, current, last
-        $keyboard = [$ikp10->getPagination(9)['keyboard']];
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 7', '8', '· 9 ·', '10'],
-        ], 'text', $keyboard);
-        self::assertAllButtonPropertiesEqual([
-            [
-                sprintf($cbdata, $command, 9, 1),
-                sprintf($cbdata, $command, 9, 7),
-                sprintf($cbdata, $command, 9, 8),
-                sprintf($cbdata, $command, 9, 9),
-                sprintf($cbdata, $command, 9, 10),
-            ],
-        ], 'callback_data', $keyboard);
+        // if current page is greater than total pages...
+        if ($selected_page > $number_of_pages) {
+            // set current page to last page
+            $selected_page = $number_of_pages;
+        }
+        // if current page is less than first page...
+        if ($selected_page < 1) {
+            // set current page to first page
+            $selected_page = 1;
+        }
+        $this->selected_page = $selected_page;
 
-        // first, previous, current
-        $keyboard = [$ikp10->getPagination(10)['keyboard']];
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 7', '8', '9', '· 10 ·'],
-        ], 'text', $keyboard);
-        self::assertAllButtonPropertiesEqual([
-            [
-                sprintf($cbdata, $command, 10, 1),
-                sprintf($cbdata, $command, 10, 7),
-                sprintf($cbdata, $command, 10, 8),
-                sprintf($cbdata, $command, 10, 9),
-                sprintf($cbdata, $command, 10, 10),
-            ],
-        ], 'callback_data', $keyboard);
+        return $this;
+    }
 
-        // custom labels, skipping some buttons
-        // first, previous, current, next, last
-        $labels = [
-            'first'    => '',
-            'previous' => 'previous %d',
-            'current'  => null,
-            'next'     => '%d next',
-            'last'     => 'last',
+    /**
+     * Get the number of items shown per page.
+     *
+     * @return int
+     */
+    public function getItemsPerPage(): int
+    {
+        return $this->items_per_page;
+    }
+
+    /**
+     * Set how many items should be shown per page.
+     *
+     * @param int $items_per_page
+     *
+     * @return InlineKeyboardPagination
+     * @throws InlineKeyboardPaginationException
+     */
+    public function setItemsPerPage($items_per_page): InlineKeyboardPagination
+    {
+        if ($items_per_page <= 0) {
+            throw new InlineKeyboardPaginationException('Invalid number of items per page, must be at least 1');
+        }
+        $this->items_per_page = $items_per_page;
+
+        return $this;
+    }
+
+    /**
+     * Set the items for the pagination.
+     *
+     * @param array $items
+     *
+     * @return InlineKeyboardPagination
+     * @throws InlineKeyboardPaginationException
+     */
+    public function setItems(array $items): InlineKeyboardPagination
+    {
+        if (empty($items)) {
+            throw new InlineKeyboardPaginationException('Items list empty.');
+        }
+        $this->items = $items;
+
+        return $this;
+    }
+
+    /**
+     * Set offset of range
+     *
+     * @return InlineKeyboardPagination
+     * @throws InlineKeyboardPaginationException
+     */
+    public function setRangeOffset($offset): InlineKeyboardPagination
+    {
+        if ($offset < 0 || !is_numeric($offset)) {
+            throw new InlineKeyboardPaginationException('Invalid offset for range');
+        }
+
+        $this->range_offset = $offset;
+
+        return $this;
+    }
+
+    /**
+     * Calculate and return the number of pages.
+     *
+     * @return int
+     */
+    public function getNumberOfPages(): int
+    {
+        return (int)ceil(count($this->items) / $this->items_per_page);
+    }
+
+    /**
+     * TelegramBotPagination constructor.
+     *
+     * @inheritdoc
+     * @throws InlineKeyboardPaginationException
+     */
+    public function __construct(
+        array $items,
+        string $command = 'pagination',
+        int $selected_page = 1,
+        int $items_per_page = 5
+    ) {
+        $this->setCommand($command);
+        $this->setItemsPerPage($items_per_page);
+        $this->setItems($items);
+        $this->setSelectedPage($selected_page);
+    }
+
+    /**
+     * @inheritdoc
+     * @throws InlineKeyboardPaginationException
+     */
+    public function getPagination(int $selected_page = null): array
+    {
+        if ($selected_page !== null) {
+            $this->setSelectedPage($selected_page);
+        }
+
+        return [
+            'items'    => $this->getPreparedItems(),
+            'keyboard' => $this->generateKeyboard(),
         ];
-        $ikp10->setLabels($labels);
-        self::assertEquals($labels, $ikp10->getLabels());
-
-        $keyboard = [$ikp10->getPagination(5)['keyboard']];
-        self::assertAllButtonPropertiesEqual([
-            ['previous 4', '6 next', 'last'],
-        ], 'text', $keyboard);
-        self::assertAllButtonPropertiesEqual([
-            [
-                sprintf($cbdata, $command, 5, 4),
-                sprintf($cbdata, $command, 5, 6),
-                sprintf($cbdata, $command, 5, 10),
-            ],
-        ], 'callback_data', $keyboard);
     }
 
-    public static function assertButtonPropertiesEqual($value, $property, $keyboard, $row, $column, $message = '')
+    /**
+     * Generate the keyboard with the correctly labelled buttons.
+     *
+     * @return array
+     */
+    protected function generateKeyboard(): array
     {
-        $row_raw    = array_values($keyboard)[$row];
-        $column_raw = array_values($row_raw)[$column];
+        $buttons = [];
+        $number_of_pages = $this->getNumberOfPages();
 
-        self::assertSame($value, $column_raw[$property], $message);
-    }
-
-    public static function assertRowButtonPropertiesEqual(array $values, $property, $keyboard, $row, $message = '')
-    {
-        $column = 0;
-        foreach ($values as $value) {
-            self::assertButtonPropertiesEqual($value, $property, $keyboard, $row, $column++, $message);
+        if ($number_of_pages === 1) {
+            return $buttons;
         }
-        self::assertCount(count(array_values($keyboard)[$row]), $values);
+
+        if ($number_of_pages > $this->max_buttons) {
+            if ($this->selected_page > 1) {
+                // get previous page num
+                $buttons[] = $this->generateButton($this->selected_page - 1, 'previous');
+            }
+            // for first pages
+            if ($this->selected_page > $this->range_offset + 1 && $number_of_pages >= $this->max_buttons) {
+                $buttons[] = $this->generateButton(1, 'first');
+            }
+
+            $range_offsets = $this->generateRange();
+            // loop to show links to range of pages around current page
+            for ($i = $range_offsets['from']; $i < $range_offsets['to']; $i++) {
+                // if it's a valid page number...
+                if ($i == $this->selected_page) {
+                    $buttons[] = $this->generateButton($this->selected_page, 'current');
+                } elseif (($i > 0) && ($i <= $number_of_pages)) {
+                    $buttons[] = $this->generateButton($i, 'default');
+                }
+            }
+
+            // if not on last page, show forward and last page links
+            if ($this->selected_page + $this->range_offset < $number_of_pages && $number_of_pages >= $this->max_buttons) {
+                $buttons[] = $this->generateButton($number_of_pages, 'last');
+            }
+            if ($this->selected_page != $number_of_pages && $number_of_pages > 1) {
+                $buttons[] = $this->generateButton($this->selected_page + 1, 'next');
+            }
+        } else {
+            for ($i = 1; $i <= $number_of_pages; $i++) {
+                // if it's a valid page number...
+                if ($i == $this->selected_page) {
+                    $buttons[] = $this->generateButton($this->selected_page, 'current');
+                } elseif (($i > 0) && ($i <= $number_of_pages)) {
+                    $buttons[] = $this->generateButton($i, 'default');
+                }
+            }
+        }
+
+        // Set the correct labels.
+        foreach ($buttons as $page => &$button) {
+
+            $label_key = $button['label'];
+
+            $label = $this->labels[$label_key] ?? '';
+
+            if ($label === '') {
+                $button = null;
+                continue;
+            }
+
+            $button['text'] = sprintf($label, $button['text']);
+        }
+
+        return array_values(array_filter($buttons));
     }
 
-    public static function assertAllButtonPropertiesEqual(array $all_values, $property, $keyboard, $message = '')
+    /**
+     * Get the range of intermediate buttons for the keyboard.
+     *
+     * @return array
+     */
+    protected function generateRange(): array
     {
-        $row = 0;
-        foreach ($all_values as $values) {
-            self::assertRowButtonPropertiesEqual($values, $property, $keyboard, $row++, $message);
+        $number_of_pages = $this->getNumberOfPages();
+
+        $from = $this->selected_page - $this->range_offset;
+        $to = (($this->selected_page + $this->range_offset) + 1);
+        $last = $number_of_pages - $this->selected_page;
+        if ($number_of_pages - $this->selected_page <= $this->range_offset) {
+            $from -= ($this->range_offset) - $last;
         }
-        self::assertCount(count($keyboard), $all_values);
+        if ($this->selected_page < $this->range_offset + 1) {
+            $to += ($this->range_offset + 1) - $this->selected_page;
+        }
+
+        return compact('from', 'to');
+    }
+
+    /**
+     * Generate the button for the passed page.
+     *
+     * @param int $page
+     * @param string $label
+     *
+     * @return array
+     */
+    protected function generateButton(int $page, string $label): array
+    {
+        return [
+            'text'          => (string)$page,
+            'callback_data' => $this->generateCallbackData($page),
+            'label'         => $label,
+        ];
+    }
+
+    /**
+     * Generate the callback data for the passed page.
+     *
+     * @param int $page
+     *
+     * @return string
+     */
+    protected function generateCallbackData(int $page): string
+    {
+        return str_replace(
+            ['{COMMAND}', '{OLD_PAGE}', '{NEW_PAGE}'],
+            [$this->command, $this->selected_page, $page],
+            $this->callback_data_format
+        );
+    }
+
+    /**
+     * Get the prepared items for the selected page.
+     *
+     * @return array
+     */
+    protected function getPreparedItems(): array
+    {
+        return array_slice($this->items, $this->getOffset(), $this->items_per_page);
+    }
+
+    /**
+     * Get the items offset for the selected page.
+     *
+     * @return int
+     */
+    protected function getOffset(): int
+    {
+        return $this->items_per_page * ($this->selected_page - 1);
+    }
+
+    /**
+     * Get the parameters from the callback query.
+     *
+     * @todo Possibly make it work for custom formats too?
+     *
+     * @param string $data
+     *
+     * @return array
+     */
+    public static function getParametersFromCallbackData($data): array
+    {
+        parse_str($data, $params);
+
+        return $params;
     }
 }

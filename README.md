@@ -55,7 +55,7 @@ $ikp->setLabels($labels);
  *optional: But recommended. if you want that max_page will set according to labels you defined,
  * please call this method. if you remove $label elements and then call this method, max_page will be defined according to labels
  */
-$ikp->setMaxPageBasedOnLabels();
+$ikp->setMaxButtonsBasedOnLabels();
 $ikp->setCallbackDataFormat($callback_data_format);
 
 // Get pagination.
