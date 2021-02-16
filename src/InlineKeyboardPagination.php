@@ -206,7 +206,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      */
     public function getNumberOfPages(): int
     {
-        return (int)ceil(count($this->items) / $this->itemsPerPage);
+        return (int) ceil(count($this->items) / $this->itemsPerPage);
     }
 
     /**
@@ -309,31 +309,28 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
         $numberOfIntermediateButtons = $this->maxButtons - 2;
         $numberOfPages               = $this->getNumberOfPages();
 
+        // @todo: Find a nicer solution for page 3
+        $from = $this->selectedPage - 1;
+        $to   = $this->selectedPage + ($this->selectedPage === 3 ? $numberOfIntermediateButtons - 1 : 2);
+
         if ($this->selectedPage === 1) {
             $from = 2;
             $to   = $this->maxButtons;
         } elseif ($this->selectedPage === $numberOfPages) {
             $from = $numberOfPages - $numberOfIntermediateButtons;
             $to   = $numberOfPages;
-        } else {
-            if ($this->selectedPage < 3) {
-                $from = $this->selectedPage;
-                $to   = $this->selectedPage + $numberOfIntermediateButtons;
-            } elseif (($numberOfPages - $this->selectedPage) < 3) {
-                $from = $numberOfPages - $numberOfIntermediateButtons;
-                $to   = $numberOfPages;
-            } else {
-                // @todo: Find a nicer solution for page 3
-                if ($this->forceButtonCount) {
-                    $from = $this->selectedPage - floor($numberOfIntermediateButtons / 2);
-                    $to   = $this->selectedPage + ceil(
-                        $numberOfIntermediateButtons / 2
-                    ) + ($this->selectedPage === 3 && $this->maxButtons > 5);
-                } else {
-                    $from = $this->selectedPage - 1;
-                    $to   = $this->selectedPage + ($this->selectedPage === 3 ? $numberOfIntermediateButtons - 1 : 2);
-                }
-            }
+        } elseif ($this->selectedPage < 3) {
+            $from = $this->selectedPage;
+            $to   = $this->selectedPage + $numberOfIntermediateButtons;
+        } elseif (($numberOfPages - $this->selectedPage) < 3) {
+            $from = $numberOfPages - $numberOfIntermediateButtons;
+            $to   = $numberOfPages;
+        } elseif ($this->forceButtonCount) {
+            $from = $this->selectedPage -
+                floor($numberOfIntermediateButtons / 2);
+            $to   = $this->selectedPage +
+                ceil($numberOfIntermediateButtons / 2) +
+                (int) ($this->selectedPage === 3 && $this->maxButtons > 5);
         }
 
         return compact('from', 'to');
@@ -349,7 +346,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     protected function generateButton(int $page): array
     {
         return [
-            'text'          => (string)$page,
+            'text'          => (string) $page,
             'callback_data' => $this->generateCallbackData($page),
         ];
     }
@@ -393,10 +390,11 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     /**
      * Get the parameters from the callback query.
      *
+     * @todo Possibly make it work for custom formats too?
+     *
      * @param string $data
      *
      * @return array
-     * @todo Possibly make it work for custom formats too?
      */
     public static function getParametersFromCallbackData(string $data): array
     {

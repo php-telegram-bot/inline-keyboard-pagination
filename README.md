@@ -19,18 +19,20 @@
 ## Installation
 
 ### Composer
+
 ```bash
-composer require php-telegram-bot/inline-keyboard-pagination:^1.0.0
+composer require php-telegram-bot/inline-keyboard-pagination
 ```
 
 ## Usage
 
 ### Test Data
+
 ```php
-$items         = range(1, 100); // required. 
-$command       = 'testCommand'; // optional. Default: pagination
+$items        = range(1, 100); // required. 
+$command      = 'testCommand'; // optional. Default: pagination
 $selectedPage = 10;            // optional. Default: 1
-$labels        = [              // optional. Change button labels (showing defaults)
+$labels       = [              // optional. Change button labels (showing defaults)
     'default'  => '%d',
     'first'    => '« %d',
     'previous' => '‹ %d',
@@ -44,6 +46,7 @@ $callbackDataFormat = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}'
 ```
 
 ### How To Use
+
 ```php
 // Define inline keyboard pagination.
 $ikp = new InlineKeyboardPagination($items, $command);
@@ -68,7 +71,7 @@ if (!empty($pagination['keyboard'])) {
     //$pagination['keyboard'][1]['callback_data']; // command=testCommand&oldPage=10&newPage=7
     
     ...
-    $data['reply_markup' => [
+    $data['reply_markup'] = [
         'inline_keyboard' => [
             $pagination['keyboard'],
         ],
@@ -78,6 +81,7 @@ if (!empty($pagination['keyboard'])) {
 ```
 
 To get the callback data, you can use the provided helper method (only works when using the default callback data format):
+
 ```php
 // e.g. Callback data.
 $callback_data = 'command=testCommand&oldPage=10&newPage=1';
@@ -96,7 +100,7 @@ parse_str($callbackData, $params);
 
 ## Code Quality
 
-Run the PHPUnit tests via Composer script. 
+Run the PHPUnit tests via Composer script.
 
 ```bash
 composer test
@@ -118,7 +122,7 @@ Project based on [Telegram Bot Pagination][github-lartie-tbp] by [lartie][github
 [code-coverage-badge]: https://img.shields.io/codecov/c/github/php-telegram-bot/inline-keyboard-pagination.svg
 [code-coverage]: https://codecov.io/gh/php-telegram-bot/inline-keyboard-pagination "Code coverage on Codecov"
 [build-status-badge]: https://img.shields.io/travis/php-telegram-bot/inline-keyboard-pagination.svg
-[build-status]: https://travis-ci.org/php-telegram-bot/inline-keyboard-pagination "Build status on Travis-CI"
+[build-status]: https://travis-ci.com/php-telegram-bot/inline-keyboard-pagination "Build status on Travis-CI"
 
 [latest-version-badge]: https://img.shields.io/packagist/v/php-telegram-bot/inline-keyboard-pagination.svg
 [total-downloads-badge]: https://img.shields.io/packagist/dt/php-telegram-bot/inline-keyboard-pagination.svg
