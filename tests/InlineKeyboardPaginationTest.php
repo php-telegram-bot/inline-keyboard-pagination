@@ -7,40 +7,28 @@ use TelegramBot\InlineKeyboardPagination\InlineKeyboardPagination;
 /**
  * Class InlineKeyboardPaginationTest
  */
-final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
+class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 {
-    /**
-     * @var int
-     */
+    /** @var int */
     private $itemsPerPage = 5;
 
-    /**
-     * @var int
-     */
+    /** @var int */
     private $selectedPage;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $command;
 
-    /**
-     * @var array
-     */
+    /** @var array */
     private $items;
 
-    /**
-     * InlineKeyboardPaginationTest constructor.
-     */
-    public function __construct()
+    public function setUp(): void
     {
-        parent::__construct();
+        parent::setUpBeforeClass();
 
         $this->items        = range(1, 100);
         $this->command      = 'testCommand';
         $this->selectedPage = random_int(1, 15);
     }
-
 
     public function testValidConstructor(): void
     {
@@ -145,52 +133,6 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         self::assertTrue(true);
     }
 
-    public function testForceButtonsCount(): void
-    {
-        $ikp = new InlineKeyboardPagination(range(1, 10), 'cbdata', 1, 1);
-
-        // testing with 8 flexible buttons
-        $ikp->setMaxButtons(8, false);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        // testing with 8 fixed buttons
-        $ikp->setMaxButtons(8, true);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 2', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        // testing with 7 fixed buttons
-        $ikp->setMaxButtons(7, true);
-
-        self::assertAllButtonPropertiesEqual([
-            ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(1)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »'],
-        ], 'text', [$ikp->getPagination(5)['keyboard']]);
-
-        self::assertAllButtonPropertiesEqual([
-            ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·'],
-        ], 'text', [$ikp->getPagination(10)['keyboard']]);
-    }
-
     public function testInvalidMaxButtons(): void
     {
         $this->expectExceptionMessage("Invalid max buttons, must be between 5 and 8.");
@@ -201,6 +143,158 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
         $ikp->setMaxButtons(2);
         $ikp->getPagination();
+    }
+
+    public function testForceButtonsCountWith10Pages(): void
+    {
+        $datas = [
+            [8, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 4, ['« 1', '‹ 2', '‹ 3', '· 4 ·', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 5, ['« 1', '‹ 2', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »']],
+            [8, 6, ['« 1', '‹ 3', '‹ 4', '‹ 5', '· 6 ·', '7 ›', '8 ›', '10 »']],
+            [8, 7, ['« 1', '‹ 4', '‹ 5', '‹ 6', '· 7 ·', '8 ›', '9 ›', '10 »']],
+            [8, 8, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [8, 9, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [8, 10, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [7, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 4, ['« 1', '‹ 2', '‹ 3', '· 4 ·', '5 ›', '6 ›', '10 »']],
+            [7, 5, ['« 1', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '7 ›', '10 »']],
+            [7, 6, ['« 1', '‹ 4', '‹ 5', '· 6 ·', '7 ›', '8 ›', '10 »']],
+            [7, 7, ['« 1', '‹ 5', '‹ 6', '· 7 ·', '8 ›', '9 ›', '10 »']],
+            [7, 8, ['« 1', '‹ 5', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [7, 9, ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [7, 10, ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [6, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '10 »']],
+            [6, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '10 »']],
+            [6, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '10 »']],
+            [6, 4, ['« 1', '‹ 2', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [6, 5, ['« 1', '‹ 3', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [6, 6, ['« 1', '‹ 4', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [6, 7, ['« 1', '‹ 5', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [6, 8, ['« 1', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [6, 9, ['« 1', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [6, 10, ['« 1', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [5, 1, ['· 1 ·', '2', '3', '4 ›', '10 »']],
+            [5, 2, ['1', '· 2 ·', '3', '4 ›', '10 »']],
+            [5, 3, ['1', '2', '· 3 ·', '4 ›', '10 »']],
+            [5, 4, ['« 1', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [5, 5, ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [5, 6, ['« 1', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [5, 7, ['« 1', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [5, 8, ['« 1', '‹ 7', '· 8 ·', '9', '10']],
+            [5, 9, ['« 1', '‹ 7', '8', '· 9 ·', '10']],
+            [5, 10, ['« 1', '‹ 7', '8', '9', '· 10 ·']],
+        ];
+
+        $ikp = new InlineKeyboardPagination(range(1, 10), 'cbdata', 1, 1);
+
+        foreach ($datas as $data) {
+            [$max_buttons, $page, $buttons] = $data;
+
+            $ikp->setMaxButtons($max_buttons, true);
+            self::assertAllButtonPropertiesEqual(
+                [$buttons],
+                'text',
+                [$ikp->getPagination($page)['keyboard']],
+                "MaxButtons: {$max_buttons}, Page: {$page}"
+            );
+        }
+    }
+
+    public function testForceButtonsCountWith3Pages(): void
+    {
+        $datas = [
+            [8, 1, ['· 1 ·', '2', '3']],
+            [8, 2, ['1', '· 2 ·', '3']],
+            [8, 3, ['1', '2', '· 3 ·']],
+            [7, 1, ['· 1 ·', '2', '3']],
+            [7, 2, ['1', '· 2 ·', '3']],
+            [7, 3, ['1', '2', '· 3 ·']],
+            [6, 1, ['· 1 ·', '2', '3']],
+            [6, 2, ['1', '· 2 ·', '3']],
+            [6, 3, ['1', '2', '· 3 ·']],
+            [5, 1, ['· 1 ·', '2', '3']],
+            [5, 2, ['1', '· 2 ·', '3']],
+            [5, 3, ['1', '2', '· 3 ·']],
+        ];
+
+        $ikp = new InlineKeyboardPagination(range(1, 3), 'cbdata', 1, 1);
+
+        foreach ($datas as $data) {
+            [$max_buttons, $page, $buttons] = $data;
+
+            $ikp->setMaxButtons($max_buttons, true);
+            self::assertAllButtonPropertiesEqual(
+                [$buttons],
+                'text',
+                [$ikp->getPagination($page)['keyboard']],
+                "MaxButtons: {$max_buttons}, Page: {$page}"
+            );
+        }
+    }
+
+    public function testFlexibleButtonsCount(): void
+    {
+        $datas = [
+            [8, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '6 ›', '7 ›', '10 »']],
+            [8, 4, ['« 1', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [8, 5, ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [8, 6, ['« 1', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [8, 7, ['« 1', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [8, 8, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [8, 9, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [8, 10, ['« 1', '‹ 4', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [7, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '6 ›', '10 »']],
+            [7, 4, ['« 1', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [7, 5, ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [7, 6, ['« 1', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [7, 7, ['« 1', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [7, 8, ['« 1', '‹ 5', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [7, 9, ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [7, 10, ['« 1', '‹ 5', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [6, 1, ['· 1 ·', '2', '3', '4 ›', '5 ›', '10 »']],
+            [6, 2, ['1', '· 2 ·', '3', '4 ›', '5 ›', '10 »']],
+            [6, 3, ['1', '2', '· 3 ·', '4 ›', '5 ›', '10 »']],
+            [6, 4, ['« 1', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [6, 5, ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [6, 6, ['« 1', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [6, 7, ['« 1', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [6, 8, ['« 1', '‹ 6', '‹ 7', '· 8 ·', '9', '10']],
+            [6, 9, ['« 1', '‹ 6', '‹ 7', '8', '· 9 ·', '10']],
+            [6, 10, ['« 1', '‹ 6', '‹ 7', '8', '9', '· 10 ·']],
+            [5, 1, ['· 1 ·', '2', '3', '4 ›', '10 »']],
+            [5, 2, ['1', '· 2 ·', '3', '4 ›', '10 »']],
+            [5, 3, ['1', '2', '· 3 ·', '4 ›', '10 »']],
+            [5, 4, ['« 1', '‹ 3', '· 4 ·', '5 ›', '10 »']],
+            [5, 5, ['« 1', '‹ 4', '· 5 ·', '6 ›', '10 »']],
+            [5, 6, ['« 1', '‹ 5', '· 6 ·', '7 ›', '10 »']],
+            [5, 7, ['« 1', '‹ 6', '· 7 ·', '8 ›', '10 »']],
+            [5, 8, ['« 1', '‹ 7', '· 8 ·', '9', '10']],
+            [5, 9, ['« 1', '‹ 7', '8', '· 9 ·', '10']],
+            [5, 10, ['« 1', '‹ 7', '8', '9', '· 10 ·']],
+        ];
+
+        $ikp = new InlineKeyboardPagination(range(1, 10), 'cbdata', 1, 1);
+
+        foreach ($datas as $data) {
+            [$max_buttons, $page, $buttons] = $data;
+
+            $ikp->setMaxButtons($max_buttons, false);
+            self::assertAllButtonPropertiesEqual(
+                [$buttons],
+                'text',
+                [$ikp->getPagination($page)['keyboard']],
+                "MaxButtons: {$max_buttons}, Page: {$page}"
+            );
+        }
     }
 
     public function testGetCallbackDataFormat(): void

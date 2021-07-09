@@ -320,17 +320,16 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
             $from = $numberOfPages - $numberOfIntermediateButtons;
             $to   = $numberOfPages;
         } elseif ($this->selectedPage < 3) {
+            // First half.
             $from = $this->selectedPage;
             $to   = $this->selectedPage + $numberOfIntermediateButtons;
         } elseif (($numberOfPages - $this->selectedPage) < 3) {
+            // Last half.
             $from = $numberOfPages - $numberOfIntermediateButtons;
             $to   = $numberOfPages;
         } elseif ($this->forceButtonCount) {
-            $from = $this->selectedPage -
-                floor($numberOfIntermediateButtons / 2);
-            $to   = $this->selectedPage +
-                ceil($numberOfIntermediateButtons / 2) +
-                (int) ($this->selectedPage === 3 && $this->maxButtons > 5);
+            $from = max(2, $this->selectedPage - floor($numberOfIntermediateButtons / 2));
+            $to   = $from + $numberOfIntermediateButtons;
         }
 
         return compact('from', 'to');
