@@ -36,13 +36,13 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
     {
         parent::__construct();
 
-        $this->items         = range(1, 100);
-        $this->command       = 'testCommand';
+        $this->items        = range(1, 100);
+        $this->command      = 'testCommand';
         $this->selectedPage = random_int(1, 15);
     }
 
 
-    public function testValidConstructor()
+    public function testValidConstructor(): void
     {
         $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
 
@@ -56,7 +56,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         self::assertStringStartsWith("command={$this->command}", $data['keyboard'][0]['callback_data']);
     }
 
-    public function testInvalidConstructor()
+    public function testInvalidConstructor(): void
     {
         $this->expectException(
             \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
@@ -67,7 +67,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination();
     }
 
-    public function testEmptyItemsConstructor()
+    public function testEmptyItemsConstructor(): void
     {
         $this->expectExceptionMessage("Items list empty.");
         $this->expectException(
@@ -78,7 +78,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination();
     }
 
-    public function testCallbackDataFormat()
+    public function testCallbackDataFormat(): void
     {
         $ikp = new InlineKeyboardPagination(range(1, 10), 'cmd', 2, 5);
 
@@ -99,7 +99,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         ], 'callback_data', [$ikp->getPagination()['keyboard']]);
     }
 
-    public function testCallbackDataParser()
+    public function testCallbackDataParser(): void
     {
         $ikp  = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
         $data = $ikp->getPagination();
@@ -108,12 +108,12 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 
         self::assertSame([
             'command' => $this->command,
-            'oldPage' => (string)$this->selectedPage,
+            'oldPage' => (string) $this->selectedPage,
             'newPage' => '1', // because we're getting the button at position 0, which is page 1
         ], $callback_data);
     }
 
-    public function testValidPagination()
+    public function testValidPagination(): void
     {
         $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
 
@@ -126,7 +126,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue(true);
     }
 
-    public function testInvalidPagination()
+    public function testInvalidPagination(): void
     {
         $this->expectExceptionMessage("Invalid selected page, must be between 1 and 20");
         $this->expectException(
@@ -137,7 +137,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination($ikp->getNumberOfPages() + 1);
     }
 
-    public function testSetMaxButtons()
+    public function testSetMaxButtons(): void
     {
         $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
         $ikp->setMaxButtons(6);
@@ -145,7 +145,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         self::assertTrue(true);
     }
 
-    public function testForceButtonsCount()
+    public function testForceButtonsCount(): void
     {
         $ikp = new InlineKeyboardPagination(range(1, 10), 'cbdata', 1, 1);
 
@@ -191,7 +191,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         ], 'text', [$ikp->getPagination(10)['keyboard']]);
     }
 
-    public function testInvalidMaxButtons()
+    public function testInvalidMaxButtons(): void
     {
         $this->expectExceptionMessage("Invalid max buttons, must be between 5 and 8.");
         $this->expectException(
@@ -203,7 +203,25 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination();
     }
 
-    public function testInvalidSelectedPage()
+    public function testGetCallbackDataFormat(): void
+    {
+        $ikp = new InlineKeyboardPagination($this->items);
+        // Test default value.
+        self::assertSame(
+            'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}',
+            $ikp->getCallbackDataFormat()
+        );
+
+        // Test custom value.
+        $customCallbackDataFormat = 'c={COMMAND}&op={OLD_PAGE}&np={NEW_PAGE}';
+        $ikp->setCallbackDataFormat($customCallbackDataFormat);
+        self::assertSame(
+            $customCallbackDataFormat,
+            $ikp->getCallbackDataFormat()
+        );
+    }
+
+    public function testInvalidSelectedPage(): void
     {
         $this->expectExceptionMessage("Invalid selected page, must be between 1 and 20");
         $this->expectException(
@@ -215,14 +233,14 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination();
     }
 
-    public function testGetItemsPerPage()
+    public function testGetItemsPerPage(): void
     {
         $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, 4);
 
         self::assertEquals(4, $ikp->getItemsPerPage());
     }
 
-    public function testInvalidItemsPerPage()
+    public function testInvalidItemsPerPage(): void
     {
         $this->expectExceptionMessage("Invalid number of items per page, must be at least 1");
         $this->expectException(
@@ -233,7 +251,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         $ikp->getPagination();
     }
 
-    public function testButtonLabels()
+    public function testButtonLabels(): void
     {
         $cbdata  = 'command=%s&oldPage=%d&newPage=%d';
         $command = 'cbdata';
@@ -321,7 +339,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         ], 'callback_data', $keyboard);
     }
 
-    public static function assertButtonPropertiesEqual($value, $property, $keyboard, $row, $column, $message = '')
+    public static function assertButtonPropertiesEqual($value, $property, $keyboard, $row, $column, $message = ''): void
     {
         $row_raw    = array_values($keyboard)[$row];
         $column_raw = array_values($row_raw)[$column];
@@ -329,7 +347,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         self::assertSame($value, $column_raw[$property], $message);
     }
 
-    public static function assertRowButtonPropertiesEqual(array $values, $property, $keyboard, $row, $message = '')
+    public static function assertRowButtonPropertiesEqual(array $values, $property, $keyboard, $row, $message = ''): void
     {
         $column = 0;
         foreach ($values as $value) {
@@ -338,7 +356,7 @@ final class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
         self::assertCount(count(array_values($keyboard)[$row]), $values);
     }
 
-    public static function assertAllButtonPropertiesEqual(array $all_values, $property, $keyboard, $message = '')
+    public static function assertAllButtonPropertiesEqual(array $all_values, $property, $keyboard, $message = ''): void
     {
         $row = 0;
         foreach ($all_values as $values) {

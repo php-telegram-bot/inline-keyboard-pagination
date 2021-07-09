@@ -4,20 +4,18 @@ language: php
 
 cache:
   directories:
-    - "$HOME/.composer/cache"
+    - vendor
+    - $HOME/.composer/cache
 
 php:
   - 7.3
   - 7.4
   - 8.0
   - nightly
-  - hhvm
 
-
-matrix:
+jobs:
   allow_failures:
     - php: nightly
-    - php: hhvm
   fast_finish: true
 
 notifications:
@@ -34,5 +32,5 @@ script:
   - composer check-code
   - if [ "$TRAVIS_PHP_VERSION" == "8.0" ]; then composer test-cov; else composer test; fi
 
-after_script:
+after_success:
   - if [ "$TRAVIS_PHP_VERSION" == "8.0" ]; then composer test-cov-upload; fi
