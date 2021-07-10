@@ -2,6 +2,7 @@
 
 namespace TelegramBot\InlineKeyboardPagination\Tests;
 
+use TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException;
 use TelegramBot\InlineKeyboardPagination\InlineKeyboardPagination;
 
 /**
@@ -9,61 +10,41 @@ use TelegramBot\InlineKeyboardPagination\InlineKeyboardPagination;
  */
 class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 {
-    /** @var int */
-    private $itemsPerPage = 5;
-
-    /** @var int */
-    private $selectedPage;
-
-    /** @var string */
-    private $command;
-
-    /** @var array */
-    private $items;
+    private InlineKeyboardPagination $ikp;
+    private array $items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    private int $itemsPerPage = 2;
+    private int $selectedPage = 1;
+    private string $command = 'command';
 
     public function setUp(): void
     {
         parent::setUpBeforeClass();
 
-        $this->items        = range(1, 100);
-        $this->command      = 'testCommand';
-        $this->selectedPage = random_int(1, 15);
+        $this->ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
     }
 
     public function testValidConstructor(): void
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
+        $data = $this->ikp->getPagination();
 
-        $data = $ikp->getPagination();
-
-        self::assertArrayHasKey('items', $data);
         self::assertCount($this->itemsPerPage, $data['items']);
-        self::assertArrayHasKey('keyboard', $data);
-        self::assertArrayHasKey(0, $data['keyboard']);
-        self::assertArrayHasKey('text', $data['keyboard'][0]);
         self::assertStringStartsWith("command={$this->command}", $data['keyboard'][0]['callback_data']);
     }
 
     public function testInvalidConstructor(): void
     {
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
-        $this->expectExceptionMessage("Invalid selected page, must be between 1 and 20");
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid page selected, must be between 1 and 10.');
 
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, 10000, $this->itemsPerPage);
-        $ikp->getPagination();
+        new InlineKeyboardPagination(range(1, 10), 'command', 10000, 1);
     }
 
     public function testEmptyItemsConstructor(): void
     {
-        $this->expectExceptionMessage("Items list empty.");
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Items list empty.');
 
-        $ikp = new InlineKeyboardPagination([]);
-        $ikp->getPagination();
+        new InlineKeyboardPagination([]);
     }
 
     public function testCallbackDataFormat(): void
@@ -89,10 +70,9 @@ class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 
     public function testCallbackDataParser(): void
     {
-        $ikp  = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
-        $data = $ikp->getPagination();
+        $data = $this->ikp->getPagination();
 
-        $callback_data = $ikp::getParametersFromCallbackData($data['keyboard'][0]['callback_data']);
+        $callback_data = $this->ikp::getParametersFromCallbackData($data['keyboard'][0]['callback_data']);
 
         self::assertSame([
             'command' => $this->command,
@@ -103,46 +83,48 @@ class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 
     public function testValidPagination(): void
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
-
         $length = (int) ceil(count($this->items) / $this->itemsPerPage);
 
         for ($i = 1; $i < $length; $i++) {
-            $ikp->getPagination($i);
+            $this->ikp->getPagination($i);
         }
 
-        $this->assertTrue(true);
+        $this->assertSame($length, $this->ikp->getNumberOfPages());
     }
 
     public function testInvalidPagination(): void
     {
-        $this->expectExceptionMessage("Invalid selected page, must be between 1 and 20");
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid page selected, must be between 1 and 20.');
 
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
+        $ikp = new InlineKeyboardPagination(range(1, 20), 'command', 1, 1);
         $ikp->getPagination($ikp->getNumberOfPages() + 1);
     }
 
     public function testSetMaxButtons(): void
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
-        $ikp->setMaxButtons(6);
+        $this->ikp->setMaxButtons(5);
+        $this->ikp->setMaxButtons(6);
+        $this->ikp->setMaxButtons(7);
+        $this->ikp->setMaxButtons(8);
 
         self::assertTrue(true);
     }
 
-    public function testInvalidMaxButtons(): void
+    public function testMaxButtonsTooSmall(): void
     {
-        $this->expectExceptionMessage("Invalid max buttons, must be between 5 and 8.");
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid max buttons, must be between 5 and 8.');
 
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
-        $ikp->setMaxButtons(2);
-        $ikp->getPagination();
+        $this->ikp->setMaxButtons(4);
+    }
+
+    public function testMaxButtonsTooBig(): void
+    {
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid max buttons, must be between 5 and 8.');
+
+        $this->ikp->setMaxButtons(9);
     }
 
     public function testForceButtonsCountWith10Pages(): void
@@ -299,50 +281,56 @@ class InlineKeyboardPaginationTest extends \PHPUnit\Framework\TestCase
 
     public function testGetCallbackDataFormat(): void
     {
-        $ikp = new InlineKeyboardPagination($this->items);
         // Test default value.
         self::assertSame(
             'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}',
-            $ikp->getCallbackDataFormat()
+            $this->ikp->getCallbackDataFormat()
         );
 
         // Test custom value.
         $customCallbackDataFormat = 'c={COMMAND}&op={OLD_PAGE}&np={NEW_PAGE}';
-        $ikp->setCallbackDataFormat($customCallbackDataFormat);
+        $this->ikp->setCallbackDataFormat($customCallbackDataFormat);
         self::assertSame(
             $customCallbackDataFormat,
-            $ikp->getCallbackDataFormat()
+            $this->ikp->getCallbackDataFormat()
         );
     }
 
-    public function testInvalidSelectedPage(): void
+    public function testSelectedPageTooLow(): void
     {
-        $this->expectExceptionMessage("Invalid selected page, must be between 1 and 20");
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid page selected, must be between 1 and 10.');
 
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, $this->itemsPerPage);
-        $ikp->setSelectedPage(-5);
-        $ikp->getPagination();
+        $ikp = new InlineKeyboardPagination(range(1, 10), 'command', 1, 1);
+        $ikp->setSelectedPage(0);
+    }
+
+    public function testSelectedPageTooHigh(): void
+    {
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid page selected, must be between 1 and 10.');
+
+        $ikp = new InlineKeyboardPagination(range(1, 10), 'command', 1, 1);
+        $ikp->setSelectedPage(11);
     }
 
     public function testGetItemsPerPage(): void
     {
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, 4);
+        $ikp = new InlineKeyboardPagination(range(1, 10), 'command', 1, 4);
 
         self::assertEquals(4, $ikp->getItemsPerPage());
+
+        $ikp->setItemsPerPage(2);
+
+        self::assertEquals(2, $ikp->getItemsPerPage());
     }
 
     public function testInvalidItemsPerPage(): void
     {
-        $this->expectExceptionMessage("Invalid number of items per page, must be at least 1");
-        $this->expectException(
-            \TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationException::class
-        );
+        $this->expectException(InlineKeyboardPaginationException::class);
+        $this->expectExceptionMessage('Invalid number of items per page, must be at least 1.');
 
-        $ikp = new InlineKeyboardPagination($this->items, $this->command, $this->selectedPage, 0);
-        $ikp->getPagination();
+        $this->ikp->setItemsPerPage(0);
     }
 
     public function testButtonLabels(): void
