@@ -11,45 +11,14 @@ use TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationExce
  */
 class InlineKeyboardPagination implements InlineKeyboardPaginator
 {
-    /**
-     * @var int
-     */
-    private $itemsPerPage;
-
-    /**
-     * @var int
-     */
-    private $maxButtons = 5;
-
-    /**
-     * @var bool
-     */
-    private $forceButtonCount = false;
-
-    /**
-     * @var int
-     */
-    private $selectedPage;
-
-    /**
-     * @var array
-     */
-    private $items;
-
-    /**
-     * @var string
-     */
-    private $command;
-
-    /**
-     * @var string
-     */
-    private $callbackDataFormat = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}';
-
-    /**
-     * @var array
-     */
-    private $labels = [
+    private array $items;
+    private int $itemsPerPage;
+    private int $selectedPage;
+    private int $maxButtons = 5;
+    private bool $forceButtonCount = false;
+    private string $command;
+    private string $callbackDataFormat = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}';
+    private array $labels = [
         'default'  => '%d',
         'first'    => '« %d',
         'previous' => '‹ %d',
@@ -68,7 +37,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     public function setMaxButtons(int $maxButtons = 5, bool $forceButtonCount = false): InlineKeyboardPagination
     {
         if ($maxButtons < 5 || $maxButtons > 8) {
-            throw new InlineKeyboardPaginationException('Invalid max buttons, must be between 5 and 8.');
+            throw InlineKeyboardPaginationException::invalidMaxButtons();
         }
 
         $this->maxButtons       = $maxButtons;
@@ -143,10 +112,9 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     {
         $numberOfPages = $this->getNumberOfPages();
         if ($selectedPage < 1 || $selectedPage > $numberOfPages) {
-            throw new InlineKeyboardPaginationException(
-                'Invalid selected page, must be between 1 and ' . $numberOfPages
-            );
+            throw InlineKeyboardPaginationException::pageMustBeBetween(1, $numberOfPages);
         }
+
         $this->selectedPage = $selectedPage;
 
         return $this;
@@ -173,8 +141,9 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     public function setItemsPerPage(int $itemsPerPage): InlineKeyboardPagination
     {
         if ($itemsPerPage <= 0) {
-            throw new InlineKeyboardPaginationException('Invalid number of items per page, must be at least 1');
+            throw InlineKeyboardPaginationException::invalidItemsPerPage();
         }
+
         $this->itemsPerPage = $itemsPerPage;
 
         return $this;
@@ -191,7 +160,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     public function setItems(array $items): InlineKeyboardPagination
     {
         if (empty($items)) {
-            throw new InlineKeyboardPaginationException('Items list empty.');
+            throw InlineKeyboardPaginationException::noItems();
         }
 
         $this->items = $items;
@@ -250,28 +219,50 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      */
     protected function generateKeyboard(): array
     {
-        $buttons       = [];
+        $buttons = $this->generateButtons();
+        $buttons = $this->applyButtonLabels($buttons);
+
+        return array_values(array_filter($buttons));
+    }
+
+    /**
+     * Generate all buttons for this inline keyboard.
+     *
+     * @return array
+     */
+    protected function generateButtons(): array
+    {
         $numberOfPages = $this->getNumberOfPages();
 
+        $range = ['from' => 2, 'to' => $numberOfPages - 1];
+
         if ($numberOfPages > $this->maxButtons) {
-            $buttons[1] = $this->generateButton(1);
-
             $range = $this->generateRange();
-            for ($i = $range['from']; $i < $range['to']; $i++) {
-                $buttons[$i] = $this->generateButton($i);
-            }
-
-            $buttons[$numberOfPages] = $this->generateButton($numberOfPages);
-        } else {
-            for ($i = 1; $i <= $numberOfPages; $i++) {
-                $buttons[$i] = $this->generateButton($i);
-            }
         }
 
-        // Set the correct labels.
+        $buttons[1] = $this->generateButton(1);
+        for ($i = $range['from']; $i <= $range['to']; $i++) {
+            $buttons[$i] = $this->generateButton($i);
+        }
+        $buttons[$numberOfPages] = $this->generateButton($numberOfPages);
+
+        return $buttons;
+    }
+
+    /**
+     * Apply correct text labels to the keyboard buttons.
+     *
+     * @param array $buttons
+     *
+     * @return array
+     */
+    protected function applyButtonLabels(array $buttons): array
+    {
+        $numberOfPages = $this->getNumberOfPages();
+
         foreach ($buttons as $page => &$button) {
-            $inFirstBlock = $this->selectedPage <= 3 && $page <= 3;
-            $inLastBlock  = $this->selectedPage >= $numberOfPages - 2 && $page >= $numberOfPages - 2;
+            $inFirstBlock = max($this->selectedPage, $page) <= 3;
+            $inLastBlock  = min($this->selectedPage, $page) >= $numberOfPages - 2;
 
             $labelKey = 'next';
             if ($page === $this->selectedPage) {
@@ -288,6 +279,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
 
             $label = $this->labels[$labelKey] ?? '';
 
+            // Remove button for undefined labels.
             if ($label === '') {
                 $button = null;
                 continue;
@@ -296,7 +288,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
             $button['text'] = sprintf($label, $page);
         }
 
-        return array_values(array_filter($buttons));
+        return $buttons;
     }
 
     /**
@@ -306,31 +298,32 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      */
     protected function generateRange(): array
     {
-        $numberOfIntermediateButtons = $this->maxButtons - 2;
+        $numberOfIntermediateButtons = $this->maxButtons - 2; // Minus first and last buttons.
         $numberOfPages               = $this->getNumberOfPages();
 
-        // @todo: Find a nicer solution for page 3
         $from = $this->selectedPage - 1;
-        $to   = $this->selectedPage + ($this->selectedPage === 3 ? $numberOfIntermediateButtons - 1 : 2);
+        $to   = $this->selectedPage + 1;
 
         if ($this->selectedPage === 1) {
             $from = 2;
-            $to   = $this->maxButtons;
+            $to   = $this->maxButtons - 1;
         } elseif ($this->selectedPage === $numberOfPages) {
             $from = $numberOfPages - $numberOfIntermediateButtons;
-            $to   = $numberOfPages;
+            $to   = $numberOfPages - 1;
+        } elseif ($this->selectedPage === 3) {
+            // Special case because this button is in the center of a flexible pagination.
+            $to += $numberOfIntermediateButtons - 3;
         } elseif ($this->selectedPage < 3) {
+            // First half.
             $from = $this->selectedPage;
-            $to   = $this->selectedPage + $numberOfIntermediateButtons;
+            $to   = $this->selectedPage + $numberOfIntermediateButtons - 1;
         } elseif (($numberOfPages - $this->selectedPage) < 3) {
+            // Last half.
             $from = $numberOfPages - $numberOfIntermediateButtons;
-            $to   = $numberOfPages;
+            $to   = $numberOfPages - 1;
         } elseif ($this->forceButtonCount) {
-            $from = $this->selectedPage -
-                floor($numberOfIntermediateButtons / 2);
-            $to   = $this->selectedPage +
-                ceil($numberOfIntermediateButtons / 2) +
-                (int) ($this->selectedPage === 3 && $this->maxButtons > 5);
+            $from = (int) max(2, $this->selectedPage - floor($numberOfIntermediateButtons / 2));
+            $to   = $from + $numberOfIntermediateButtons - 1;
         }
 
         return compact('from', 'to');
@@ -346,7 +339,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     protected function generateButton(int $page): array
     {
         return [
-            'text'          => (string) $page,
+            'text'          => $page,
             'callback_data' => $this->generateCallbackData($page),
         ];
     }
