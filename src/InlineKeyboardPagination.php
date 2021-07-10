@@ -11,14 +11,14 @@ use TelegramBot\InlineKeyboardPagination\Exceptions\InlineKeyboardPaginationExce
  */
 class InlineKeyboardPagination implements InlineKeyboardPaginator
 {
-    private array $items;
-    private int $itemsPerPage;
-    private int $selectedPage;
-    private int $maxButtons = 5;
-    private bool $forceButtonCount = false;
-    private string $command;
-    private string $callbackDataFormat = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}';
-    private array $labels = [
+    protected array $items;
+    protected int $itemsPerPage;
+    protected int $selectedPage;
+    protected int $maxButtons = 5;
+    protected bool $forceButtonCount = false;
+    protected string $command;
+    protected string $callbackDataFormat = 'command={COMMAND}&oldPage={OLD_PAGE}&newPage={NEW_PAGE}';
+    protected array $labels = [
         'default'  => '%d',
         'first'    => '« %d',
         'previous' => '‹ %d',
@@ -31,10 +31,10 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      * @param int  $maxButtons
      * @param bool $forceButtonCount
      *
-     * @return $this
+     * @return self
      * @throws InlineKeyboardPaginationException
      */
-    public function setMaxButtons(int $maxButtons = 5, bool $forceButtonCount = false): InlineKeyboardPagination
+    public function setMaxButtons(int $maxButtons = 5, bool $forceButtonCount = false): self
     {
         if ($maxButtons < 5 || $maxButtons > 8) {
             throw InlineKeyboardPaginationException::invalidMaxButtons();
@@ -61,9 +61,9 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      *
      * @param string $callbackDataFormat
      *
-     * @return InlineKeyboardPagination
+     * @return self
      */
-    public function setCallbackDataFormat(string $callbackDataFormat): InlineKeyboardPagination
+    public function setCallbackDataFormat(string $callbackDataFormat): self
     {
         $this->callbackDataFormat = $callbackDataFormat;
 
@@ -85,9 +85,9 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      *
      * @param array $labels
      *
-     * @return InlineKeyboardPagination
+     * @return self
      */
-    public function setLabels(array $labels): InlineKeyboardPagination
+    public function setLabels(array $labels): self
     {
         $this->labels = $labels;
 
@@ -97,7 +97,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
     /**
      * @inheritdoc
      */
-    public function setCommand(string $command = 'pagination'): InlineKeyboardPagination
+    public function setCommand(string $command = 'pagination'): self
     {
         $this->command = $command;
 
@@ -108,7 +108,7 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      * @inheritdoc
      * @throws InlineKeyboardPaginationException
      */
-    public function setSelectedPage(int $selectedPage): InlineKeyboardPagination
+    public function setSelectedPage(int $selectedPage): self
     {
         $numberOfPages = $this->getNumberOfPages();
         if ($selectedPage < 1 || $selectedPage > $numberOfPages) {
@@ -135,10 +135,10 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      *
      * @param int $itemsPerPage
      *
-     * @return InlineKeyboardPagination
+     * @return self
      * @throws InlineKeyboardPaginationException
      */
-    public function setItemsPerPage(int $itemsPerPage): InlineKeyboardPagination
+    public function setItemsPerPage(int $itemsPerPage): self
     {
         if ($itemsPerPage <= 0) {
             throw InlineKeyboardPaginationException::invalidItemsPerPage();
@@ -154,10 +154,10 @@ class InlineKeyboardPagination implements InlineKeyboardPaginator
      *
      * @param array $items
      *
-     * @return InlineKeyboardPagination
+     * @return self
      * @throws InlineKeyboardPaginationException
      */
-    public function setItems(array $items): InlineKeyboardPagination
+    public function setItems(array $items): self
     {
         if (empty($items)) {
             throw InlineKeyboardPaginationException::noItems();

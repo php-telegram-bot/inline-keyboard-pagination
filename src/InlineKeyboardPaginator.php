@@ -25,27 +25,27 @@ interface InlineKeyboardPaginator
      * @param int  $maxButtons
      * @param bool $forceButtonCount
      *
-     * @return InlineKeyboardPagination
+     * @return self
      */
-    public function setMaxButtons(int $maxButtons = 5, bool $forceButtonCount = false): InlineKeyboardPagination;
+    public function setMaxButtons(int $maxButtons = 5, bool $forceButtonCount = false): self;
 
     /**
      * Set command for this pagination.
      *
      * @param string $command
      *
-     * @return InlineKeyboardPagination
+     * @return self
      */
-    public function setCommand(string $command = 'pagination'): InlineKeyboardPagination;
+    public function setCommand(string $command = 'pagination'): self;
 
     /**
      * Set the selected page.
      *
      * @param int $selectedPage
      *
-     * @return InlineKeyboardPagination
+     * @return self
      */
-    public function setSelectedPage(int $selectedPage): InlineKeyboardPagination;
+    public function setSelectedPage(int $selectedPage): self;
 
     /**
      * Get the pagination data for the passed page.
